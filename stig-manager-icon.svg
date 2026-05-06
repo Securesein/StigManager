@@ -1,0 +1,32 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <title>STIG Manager icon</title>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#1a1a1a"/>
+
+  <!-- Shield body -->
+  <path d="M256 60 L420 120 L420 290 Q420 400 256 460 Q92 400 92 290 L92 120 Z"
+        fill="#222222" stroke="#444444" stroke-width="3"/>
+
+  <!-- Shield inner -->
+  <path d="M256 90 L395 142 L395 288 Q395 382 256 435 Q117 382 117 288 L117 142 Z"
+        fill="#2a2a2a" stroke="#555555" stroke-width="1.5"/>
+
+  <!-- Top accent bar -->
+  <rect x="226" y="75" width="60" height="5" rx="2" fill="#c0c0c0"/>
+
+  <!-- STIG text -->
+  <text x="256" y="220" text-anchor="middle"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="72" font-weight="600"
+        fill="#d0d0d0" letter-spacing="6">STIG</text>
+
+  <!-- Divider line -->
+  <line x1="130" y1="240" x2="382" y2="240" stroke="#444444" stroke-width="1.5"/>
+
+  <!-- Checkmark -->
+  <polyline points="175,310 220,355 340,255"
+            fill="none" stroke="#e0e0e0" stroke-width="18"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+</svg>

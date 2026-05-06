@@ -1,0 +1,34 @@
+appId: com.stigmanager.app
+productName: STIG Manager
+copyright: MIT
+
+directories:
+  output: release
+
+files:
+  - main/**
+  - shared/**
+  - dist/**
+  - package.json
+
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerLanguages:
+    - nl_NL
+    - en_US
+
+asar: true
