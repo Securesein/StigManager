@@ -1,10 +1,9 @@
-const { ipcMain, dialog, BrowserWindow, app } = require('electron');
+const { ipcMain, dialog, app } = require('electron');
 const fs   = require('fs');
 const path = require('path');
 const db   = require('./db');
 const { parseFile, peekMetadata } = require('./parser');
 const { matchRules }             = require('./matcher');
-const { downloadStig, cleanupTempFiles } = require('./downloader');
 const { EXPIRY_WARNING_DAYS }    = require('../shared/constants');
 
 // ── Gedeelde import logica ────────────────────────────────────────────────────
@@ -72,19 +71,6 @@ ipcMain.handle('stig:peek-file', async (_, filePath) => {
 ipcMain.handle('stig:import-file', async (_, filePath, platform, version, releaseDate, compareWithVersionId, useCaseId) => {
   const { rules, format } = await parseFile(filePath);
   return runImport(rules, format, platform, version, releaseDate, compareWithVersionId, useCaseId);
-});
-
-ipcMain.handle('stig:download-and-import', async (event, url, platform, version, releaseDate, compareWithVersionId, useCaseId) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  const { xmlPath, tempFiles, format } = await downloadStig(url, pct => {
-    win?.webContents.send('stig:download-progress', pct);
-  });
-  try {
-    const { rules } = await parseFile(xmlPath);
-    return runImport(rules, format, platform, version, releaseDate, compareWithVersionId, useCaseId);
-  } finally {
-    cleanupTempFiles(tempFiles);
-  }
 });
 
 // ── Lezen ─────────────────────────────────────────────────────────────────────

@@ -174,8 +174,7 @@ function UseCaseDetail({ selectedUseCase, versions, onSelectVersion, onImportDon
   const [stats, setStats]               = useState([]);
   const [showImport, setShowImport]     = useState(false);
   const [importMode, setImportMode]     = useState('file');
-  const [form, setForm]                 = useState({ filePath: null, url: '', platform: '', version: '', releaseDate: '', compareWithVersionId: '' });
-  const [downloadProgress, setProgress] = useState(null);
+  const [form, setForm]                 = useState({ filePath: null, platform: '', version: '', releaseDate: '', compareWithVersionId: '' });
   const [importing, setImporting]       = useState(false);
   const [importError, setImportError]   = useState(null);
 
@@ -184,12 +183,6 @@ function UseCaseDetail({ selectedUseCase, versions, onSelectVersion, onImportDon
   useEffect(() => {
     window.stig.getVersionStats(selectedUseCase.id).then(setStats);
   }, [selectedUseCase, versions]);
-
-  useEffect(() => {
-    if (!showImport) return;
-    window.stig.onDownloadProgress(pct => setProgress(pct));
-    return () => window.stig.offDownloadProgress();
-  }, [showImport]);
 
   function updateForm(patch) { setForm(f => ({ ...f, ...patch })); }
 
@@ -209,21 +202,17 @@ function UseCaseDetail({ selectedUseCase, versions, onSelectVersion, onImportDon
     if (importMode !== 'json') {
       if (!platform || !version) { setImportError('Please enter a platform and version number.'); return; }
       if (importMode === 'file' && !form.filePath) { setImportError('Please select a file.'); return; }
-      if (importMode === 'url'  && !form.url.trim()) { setImportError('Please enter a URL.'); return; }
     }
     setImporting(true);
     setImportError(null);
-    if (importMode === 'url') setProgress(0);
     try {
       let result;
       const compareId = form.compareWithVersionId ? Number(form.compareWithVersionId) : null;
       if (importMode === 'json') {
         result = await window.stig.importVersionJson();
         if (!result) { setImporting(false); return; }
-      } else if (importMode === 'file') {
-        result = await window.stig.importFile(form.filePath, platform, version, form.releaseDate || null, compareId, selectedUseCase.id);
       } else {
-        result = await window.stig.downloadAndImport(form.url.trim(), platform, version, form.releaseDate || null, compareId, selectedUseCase.id);
+        result = await window.stig.importFile(form.filePath, platform, version, form.releaseDate || null, compareId, selectedUseCase.id);
       }
       closeImport();
       onImportDone(result.versionId, result.mappingCount > 0);
@@ -231,15 +220,13 @@ function UseCaseDetail({ selectedUseCase, versions, onSelectVersion, onImportDon
       setImportError(e.message ?? 'Import failed.');
     } finally {
       setImporting(false);
-      setProgress(null);
     }
   }
 
   function closeImport() {
     setShowImport(false);
     setImportError(null);
-    setProgress(null);
-    setForm({ filePath: null, url: '', platform: '', version: '', releaseDate: '', compareWithVersionId: '' });
+    setForm({ filePath: null, platform: '', version: '', releaseDate: '', compareWithVersionId: '' });
   }
 
   const platforms  = [...new Set(stats.map(s => s.platform))].sort();
@@ -329,7 +316,7 @@ function UseCaseDetail({ selectedUseCase, versions, onSelectVersion, onImportDon
               <p className="text-xs text-indigo-600 mt-0.5">→ {selectedUseCase.name}</p>
             </div>
             <div className="flex border-b border-gray-200 mb-5">
-              {[{ id: 'file', label: 'File' }, { id: 'url', label: 'Download via URL' }, { id: 'json', label: 'JSON backup' }].map(({ id, label }) => (
+              {[{ id: 'file', label: 'File' }, { id: 'json', label: 'JSON backup' }].map(({ id, label }) => (
                 <button key={id} onClick={() => { setImportMode(id); setImportError(null); }}
                   className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${importMode === id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}>
                   {label}
@@ -343,18 +330,13 @@ function UseCaseDetail({ selectedUseCase, versions, onSelectVersion, onImportDon
                   <p className="text-sm text-gray-700 font-medium">Restore a version from a JSON backup</p>
                   <p className="text-xs text-gray-400">A file picker will open when you click Import.</p>
                 </div>
-              ) : importMode === 'file' ? (
+              ) : (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">File (.xml, .xccdf, .csv)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">File (.xml, .xccdf)</label>
                   <div className="flex gap-2">
                     <input readOnly value={form.filePath ? form.filePath.split('/').pop() : ''} placeholder="No file selected" className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-default" />
                     <button onClick={selectFile} className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Browse</button>
                   </div>
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
-                  <input value={form.url} onChange={e => updateForm({ url: e.target.value })} placeholder="https://dl.dod.cyber.mil/..." className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono" />
                 </div>
               )}
               {importMode !== 'json' && <>
@@ -383,12 +365,6 @@ function UseCaseDetail({ selectedUseCase, versions, onSelectVersion, onImportDon
                   </div>
                 )}
               </>}
-              {importMode === 'url' && downloadProgress !== null && (
-                <div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-1"><span>Downloading...</span><span>{downloadProgress}%</span></div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-indigo-600 h-1.5 rounded-full transition-all" style={{ width: `${downloadProgress}%` }} /></div>
-                </div>
-              )}
               {importError && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{importError}</p>}
             </div>
             <div className="flex gap-3 mt-6">

@@ -9,7 +9,6 @@
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16",
     "better-sqlite3": "^9.6.0",
     "fastest-levenshtein": "^1.0.16",
     "papaparse": "^5.4.1",

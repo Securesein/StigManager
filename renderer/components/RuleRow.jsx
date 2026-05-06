@@ -26,7 +26,7 @@ export default function RuleRow({ rule, annotation, onClick }) {
       onClick={onClick}
       className="w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors flex items-start gap-3 group"
     >
-      <span className={`shrink-0 mt-0.5 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${SEVERITY_STYLES[rule.severity] ?? 'bg-gray-100 text-gray-500'}`}>
+      <span className={`shrink-0 mt-0.5 w-16 text-center py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${SEVERITY_STYLES[rule.severity] ?? 'bg-gray-100 text-gray-500'}`}>
         {rule.severity ?? '?'}
       </span>
 
