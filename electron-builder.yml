@@ -23,12 +23,11 @@ win:
   target:
     - target: nsis
       arch: [x64]
+    - target: portable
+      arch: [x64]
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  installerLanguages:
-    - nl_NL
-    - en_US
 
 asar: true
