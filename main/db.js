@@ -298,7 +298,7 @@ function getExpiringAnnotations(withinDays = 30) {
       JOIN stig_rules    sr ON ra.rule_id    = sr.id
       JOIN stig_versions sv ON sr.version_id = sv.id
       LEFT JOIN use_cases uc ON sv.use_case_id = uc.id
-      WHERE ra.expires_at <= ?
+      WHERE ra.expires_at != '' AND ra.expires_at <= ?
       ORDER BY ra.expires_at ASC
     `).all(threshold);
   } catch (_) {
@@ -307,7 +307,7 @@ function getExpiringAnnotations(withinDays = 30) {
       FROM rule_annotations ra
       JOIN stig_rules    sr ON ra.rule_id    = sr.id
       JOIN stig_versions sv ON sr.version_id = sv.id
-      WHERE ra.expires_at <= ?
+      WHERE ra.expires_at != '' AND ra.expires_at <= ?
       ORDER BY ra.expires_at ASC
     `).all(threshold);
   }
@@ -357,8 +357,8 @@ function getVersionStats(useCaseId) {
       COUNT(sr.id)                                          AS rule_count,
       COUNT(ra.id)                                          AS annotated_count,
       SUM(CASE WHEN ra.status = 'comply'  THEN 1 ELSE 0 END) AS comply_count,
-      SUM(CASE WHEN ra.expires_at <= datetime('now') AND ra.id IS NOT NULL THEN 1 ELSE 0 END) AS expired_count,
-      SUM(CASE WHEN ra.expires_at > datetime('now') AND ra.expires_at <= datetime('now', '+30 days') AND ra.id IS NOT NULL THEN 1 ELSE 0 END) AS expiring_count,
+      SUM(CASE WHEN ra.expires_at != '' AND ra.expires_at <= datetime('now') AND ra.id IS NOT NULL THEN 1 ELSE 0 END) AS expired_count,
+      SUM(CASE WHEN ra.expires_at != '' AND ra.expires_at > datetime('now') AND ra.expires_at <= datetime('now', '+30 days') AND ra.id IS NOT NULL THEN 1 ELSE 0 END) AS expiring_count,
       EXISTS (SELECT 1 FROM version_mappings vm2
               JOIN stig_rules nr ON vm2.new_rule_id = nr.id
               WHERE nr.version_id = sv.id) AS has_mappings

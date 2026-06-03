@@ -235,9 +235,17 @@ function buildXlsx(rows, selectedKeys, meta) {
       let bg        = rowBg;
       let fontColor = 'FF000000';
 
-      if (colKey === 'status' && r.status && STATUS_STYLE[r.status]) {
-        bg        = 'FF' + STATUS_STYLE[r.status].fill;
-        fontColor = 'FF' + STATUS_STYLE[r.status].font;
+      if (colKey === 'status') {
+        if (r.status && STATUS_STYLE[r.status]) {
+          bg        = 'FF' + STATUS_STYLE[r.status].fill;
+          fontColor = 'FF' + STATUS_STYLE[r.status].font;
+        }
+        cell.dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          showDropDown: false,
+          formulae: ['"Compliant,Explanation Required,⚑ Flagged,Open,N/A"'],
+        };
       } else if (colKey === 'severity' && r.severity && SEVERITY_STYLE[r.severity]) {
         bg        = 'FF' + SEVERITY_STYLE[r.severity].fill;
         fontColor = 'FF' + SEVERITY_STYLE[r.severity].font;
