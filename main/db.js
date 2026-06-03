@@ -147,6 +147,11 @@ function updateUseCaseSettings(id, { enforceExpiry, reviewer }) {
     .run(enforceExpiry ? 1 : 0, reviewer?.trim() || null, id);
 }
 
+function updateUseCaseReviewer(id, reviewer) {
+  getDb().prepare('UPDATE use_cases SET reviewer = ? WHERE id = ?')
+    .run(reviewer?.trim() || null, id);
+}
+
 function deleteUseCase(id) {
   const db = getDb();
   db.transaction(() => {
@@ -381,7 +386,7 @@ function getDistinctPlatforms() {
 
 module.exports = {
   getDb,
-  getUseCases, createUseCase, renameUseCase, deleteUseCase,
+  getUseCases, createUseCase, renameUseCase, deleteUseCase, updateUseCaseReviewer,
   insertVersion, getAllVersions, getVersionsByUseCase, getVersionsByPlatform, getLatestVersionForPlatform, deleteVersion,
   insertRules, getRulesByVersion, getRuleById,
   upsertAnnotation, getAnnotationByRule, deleteAnnotation, getAnnotationsByVersion, getExpiringAnnotations,

@@ -97,12 +97,15 @@ export default function RuleList({ version, onSelectRule, onBack }) {
   const [filterExpiring, setExpiring] = useState(false);
   const [search, setSearch]           = useState('');
   const [exporting, setExporting]     = useState(false);
-  const [xlsxColumns, setXlsxColumns] = useState(loadXlsxColumns);
-  const [showColConfig, setColConfig] = useState(false);
+  const [xlsxColumns, setXlsxColumns]   = useState(loadXlsxColumns);
+  const [showColConfig, setColConfig]   = useState(false);
+  const [reviewer, setReviewer]         = useState(version?.use_case_reviewer ?? '');
+  const [editingReviewer, setEditing]   = useState(false);
 
   useEffect(() => {
     if (!version) return;
     load();
+    setReviewer(version.use_case_reviewer ?? '');
   }, [version]);
 
   async function load() {
@@ -126,6 +129,11 @@ export default function RuleList({ version, onSelectRule, onBack }) {
     setExporting('xlsx');
     await window.stig.exportXlsx(version.id, xlsxColumns);
     setExporting(false);
+  }
+
+  async function saveReviewer() {
+    setEditing(false);
+    await window.stig.updateReviewer(version.use_case_id, reviewer);
   }
 
   function saveXlsxColumns(cols) {
@@ -169,7 +177,29 @@ export default function RuleList({ version, onSelectRule, onBack }) {
           <h2 className="text-base font-bold text-gray-800">
             {version?.platform} — {version?.version}
           </h2>
-          <p className="text-xs text-gray-400">{filtered.length} of {rules.length} rules</p>
+          <div className="flex items-center gap-1 mt-0.5">
+            <p className="text-xs text-gray-400">{filtered.length} of {rules.length} rules</p>
+            <span className="text-xs text-gray-300">·</span>
+            {editingReviewer ? (
+              <input
+                autoFocus
+                value={reviewer}
+                onChange={e => setReviewer(e.target.value)}
+                onBlur={saveReviewer}
+                onKeyDown={e => { if (e.key === 'Enter') saveReviewer(); if (e.key === 'Escape') { setReviewer(version?.use_case_reviewer ?? ''); setEditing(false); } }}
+                placeholder="Reviewer name…"
+                className="text-xs px-1.5 py-0.5 border border-indigo-300 rounded outline-none text-gray-700 w-40"
+              />
+            ) : (
+              <button
+                onClick={() => setEditing(true)}
+                className="text-xs text-gray-400 hover:text-indigo-600 transition-colors"
+                title="Set reviewer"
+              >
+                {reviewer ? `Reviewer: ${reviewer}` : '+ Add reviewer'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Export buttons */}

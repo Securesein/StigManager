@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('stig', {
   getVersionsByUseCase:      (id)                => ipcRenderer.invoke('stig:get-versions-by-use-case', id),
   getVersionStats:           (useCaseId)         => ipcRenderer.invoke('stig:get-version-stats', useCaseId),
   updateUseCaseSettings:     (id, settings)      => ipcRenderer.invoke('stig:update-use-case-settings', id, settings),
+  updateReviewer:            (id, reviewer)      => ipcRenderer.invoke('stig:update-reviewer', id, reviewer),
   deleteVersion:             (versionId)           => ipcRenderer.invoke('stig:delete-version', versionId),
   exportVersionJson:         (versionId)           => ipcRenderer.invoke('stig:export-version-json', versionId),
   importVersionJson:         ()                    => ipcRenderer.invoke('stig:import-version-json'),

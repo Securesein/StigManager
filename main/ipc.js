@@ -224,8 +224,7 @@ function buildXlsx(rows, selectedKeys, meta) {
   // Data rows
   rows.forEach((r, i) => {
     const isEven   = i % 2 === 0;
-    const isFlagged = r.status === 'flagged';
-    const rowBg    = isFlagged ? 'FFFFF0F0' : (isEven ? 'FFFFFFFF' : 'FFF5F7FA');
+    const rowBg = isEven ? 'FFFFFFFF' : 'FFF5F7FA';
     const values = cols.map(c => {
       if (c.key === 'expires_at') return r.expires_at ? r.expires_at.split('T')[0] : '';
       if (c.key === 'status')     return STATUS_STYLE[r.status]?.label ?? r.status ?? '';
@@ -273,10 +272,22 @@ function buildXlsx(rows, selectedKeys, meta) {
   // edits the dropdown value in Excel.
   const statusIdx = cols.findIndex(c => c.key === 'status');
   if (statusIdx >= 0) {
-    const sLetter = colLetter(statusIdx + 1);
-    const ref = `${sLetter}2:${sLetter}${rows.length + 1}`;
+    const sLetter  = colLetter(statusIdx + 1);
+    const lastCol  = colLetter(cols.length);
+    const lastRow  = rows.length + 1;
+
+    // Row-level highlight for flagged (lower priority, overridden by status-cell rules)
     sheet.addConditionalFormatting({
-      ref,
+      ref: `A2:${lastCol}${lastRow}`,
+      rules: [
+        { priority: 20, type: 'expression', formulae: [`$${sLetter}2="⚑ Flagged"`],
+          style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFF0F0' } } } },
+      ],
+    });
+
+    // Status cell colours (higher priority, override row highlight for status column)
+    sheet.addConditionalFormatting({
+      ref: `${sLetter}2:${sLetter}${lastRow}`,
       rules: [
         { priority: 1, type: 'cellIs', operator: 'equal', formulae: ['"Compliant"'],            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFC6EFCE' } }, font: { color: { argb: 'FF375623' } } } },
         { priority: 2, type: 'cellIs', operator: 'equal', formulae: ['"Explanation Required"'],  style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFBDD7EE' } }, font: { color: { argb: 'FF1F4E79' } } } },
@@ -418,6 +429,11 @@ ipcMain.handle('stig:save-annotation', (_, data) => {
 
 ipcMain.handle('stig:update-use-case-settings', (_, id, settings) => {
   db.updateUseCaseSettings(id, settings);
+  return true;
+});
+
+ipcMain.handle('stig:update-reviewer', (_, id, reviewer) => {
+  db.updateUseCaseReviewer(id, reviewer);
   return true;
 });
 
