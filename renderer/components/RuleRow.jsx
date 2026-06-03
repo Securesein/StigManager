@@ -7,17 +7,19 @@ const SEVERITY_STYLES = {
 };
 
 const STATUS_STYLES = {
-  comply:  'bg-green-100 text-green-700',
-  explain: 'bg-indigo-100 text-indigo-700',
-  na:      'bg-gray-100 text-gray-500',
-  open:    'bg-orange-100 text-orange-700',
+  comply:   'bg-green-100 text-green-700',
+  explain:  'bg-indigo-100 text-indigo-700',
+  na:       'bg-gray-100 text-gray-500',
+  open:     'bg-orange-100 text-orange-700',
+  flagged:  'bg-rose-100 text-rose-700 ring-1 ring-rose-400',
 };
 
 const STATUS_LABELS = {
-  comply:  'Compliant',
-  explain: 'Explain',
-  na:      'N/A',
-  open:    'Open',
+  comply:   'Compliant',
+  explain:  'Explain',
+  na:       'N/A',
+  open:     'Open',
+  flagged:  '⚑ Flagged',
 };
 
 export default function RuleRow({ rule, annotation, onClick }) {

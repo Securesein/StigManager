@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import RuleRow from '../components/RuleRow';
 
 const SEVERITY_OPTIONS = ['All', 'high', 'medium', 'low'];
-const STATUS_OPTIONS   = ['All', 'comply', 'explain', 'open', 'na', 'none'];
-const STATUS_LABELS    = { comply: 'Compliant', explain: 'Explain', open: 'Open', na: 'N/A', none: 'No status' };
+const STATUS_OPTIONS   = ['All', 'flagged', 'comply', 'explain', 'open', 'na', 'none'];
+const STATUS_LABELS    = { comply: 'Compliant', explain: 'Explain', open: 'Open', na: 'N/A', none: 'No status', flagged: '⚑ Flagged' };
 const SEV_LABELS       = { high: 'High', medium: 'Medium', low: 'Low' };
 
 export default function RuleList({ version, onSelectRule, onBack }) {

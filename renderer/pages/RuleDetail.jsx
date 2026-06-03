@@ -6,6 +6,7 @@ const STATUS_OPTIONS = [
   { value: 'comply',  label: 'Compliant' },
   { value: 'explain', label: 'Explanation required' },
   { value: 'na',      label: 'Not applicable' },
+  { value: 'flagged', label: '⚑ Flagged — non-compliant, needs follow-up' },
 ];
 
 const SEVERITY_STYLES = {
@@ -107,8 +108,15 @@ export default function RuleDetail({ rule, onBack, onSaved, enforceExpiry = true
           </div>
 
           <div className="lg:col-span-2">
-            <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-4 sticky top-6">
+            <div className={`bg-white border rounded-xl p-4 space-y-4 sticky top-6 ${form.status === 'flagged' ? 'border-rose-300' : 'border-gray-200'}`}>
               <h3 className="text-sm font-semibold text-gray-800">Annotation</h3>
+
+              {form.status === 'flagged' && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-medium">
+                  <span>⚑</span>
+                  <span>Non-compliant — explanation still required</span>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>

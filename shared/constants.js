@@ -7,10 +7,11 @@ const CONFIDENCE = {
 const FUZZY_THRESHOLD = 0.75;
 
 const ANNOTATION_STATUS = {
-  COMPLY:  'comply',
-  EXPLAIN: 'explain',
-  NA:      'na',
-  OPEN:    'open',
+  COMPLY:   'comply',
+  EXPLAIN:  'explain',
+  NA:       'na',
+  OPEN:     'open',
+  FLAGGED:  'flagged',
 };
 
 const PLATFORMS = {
