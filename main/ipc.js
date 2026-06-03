@@ -38,16 +38,7 @@ const SEVERITY_STYLE = {
   low:    { fill: 'DDEBF7', font: '1F4E79' },
 };
 
-function colLetter(n) {
-  let s = '';
-  while (n > 0) {
-    s = String.fromCharCode(65 + (n - 1) % 26) + s;
-    n = Math.floor((n - 1) / 26);
-  }
-  return s;
-}
-
-function addCoverSheet(workbook, meta, rows, sheetCols) {
+function addCoverSheet(workbook, meta, rows) {
   const cover = workbook.addWorksheet('Cover');
   cover.showGridLines = false;
   cover.views = [{ showGridLines: false }];
@@ -58,14 +49,12 @@ function addCoverSheet(workbook, meta, rows, sheetCols) {
     { width: 16 },
   ];
 
-  const NAV   = 'FF1E3A5F';
+  const NAV  = 'FF1E3A5F';
   const WHITE = 'FFFFFFFF';
   const LIGHT = 'FFF0F4FA';
   const GRAY  = 'FF6B7280';
 
-  function blank(n = 1) {
-    for (let i = 0; i < n; i++) cover.addRow([]);
-  }
+  function blank(n = 1) { for (let i = 0; i < n; i++) cover.addRow([]); }
 
   function navCell(row, col, value, opts = {}) {
     const cell = row.getCell(col);
@@ -76,68 +65,46 @@ function addCoverSheet(workbook, meta, rows, sheetCols) {
   }
 
   // ── Header block ──────────────────────────────────────────────────────────
-  const h1 = cover.addRow([]);
-  h1.height = 14;
+  const h1 = cover.addRow([]); h1.height = 14;
   [1, 2, 3, 4].forEach(c => navCell(h1, c, ''));
 
-  const h2 = cover.addRow([]);
-  h2.height = 44;
+  const h2 = cover.addRow([]); h2.height = 44;
   navCell(h2, 1, '');
   navCell(h2, 2, 'STIG Compliance Review', { bold: true, size: 22, align: 'left', indent: 1 });
   cover.mergeCells(h2.number, 2, h2.number, 4);
 
-  const h3 = cover.addRow([]);
-  h3.height = 26;
+  const h3 = cover.addRow([]); h3.height = 26;
   navCell(h3, 1, '');
   navCell(h3, 2, meta.useCaseName ?? '—', { size: 13, align: 'left', indent: 1 });
   cover.mergeCells(h3.number, 2, h3.number, 4);
 
-  const h4 = cover.addRow([]);
-  h4.height = 14;
+  const h4 = cover.addRow([]); h4.height = 14;
   [1, 2, 3, 4].forEach(c => navCell(h4, c, ''));
 
   blank(2);
 
   // ── Detail rows ───────────────────────────────────────────────────────────
   function detailRow(label, value) {
-    const row = cover.addRow([]);
-    row.height = 22;
+    const row = cover.addRow([]); row.height = 22;
     const lc = row.getCell(2);
     lc.value = label;
     lc.font  = { name: 'Calibri', color: { argb: GRAY }, size: 10, bold: true };
     lc.alignment = { vertical: 'middle' };
-
     const vc = row.getCell(3);
     vc.value = value;
     vc.font  = { name: 'Calibri', size: 11 };
     vc.alignment = { vertical: 'middle' };
-    return row;
   }
 
-  detailRow('Platform',      meta.platform ?? '—');
-  detailRow('Version',       meta.version  ?? '—');
-  detailRow('Release date',  meta.releaseDate ? meta.releaseDate.split('T')[0] : '—');
-  detailRow('Export date',   meta.exportDate);
+  detailRow('Platform',     meta.platform ?? '—');
+  detailRow('Version',      meta.version  ?? '—');
+  detailRow('Release date', meta.releaseDate ? meta.releaseDate.split('T')[0] : '—');
+  detailRow('Export date',  meta.exportDate);
   if (meta.reviewer) detailRow('Reviewer', meta.reviewer);
 
   blank(2);
 
-  // ── Summary table ─────────────────────────────────────────────────────────
-  // Use COUNTIF formulas referencing the data sheet so values update when
-  // the user edits the Excel file manually.
-  const statusIdx    = sheetCols.findIndex(c => c.key === 'status');
-  const hasStatusCol = statusIdx >= 0;
-  const sLetter      = hasStatusCol ? colLetter(statusIdx + 1) : null;
-  const firstLetter  = sheetCols.length > 0 ? colLetter(1) : 'A';
-  const lastDataRow  = rows.length + 1;
-  const dataRef      = (letter) => `'STIG Review'!${letter}2:${letter}${lastDataRow}`;
-
-  function countVal(formula, fallback) {
-    // ExcelJS requires formula WITHOUT leading '='; result provides cached display value
-    return hasStatusCol ? { formula: formula.replace(/^=/, ''), result: fallback } : fallback;
-  }
-
-  // Static fallback counts (used only when status column is not exported)
+  // ── Summary table (static counts at export time) ──────────────────────────
   const counts = { comply: 0, explain: 0, flagged: 0, open: 0, na: 0, none: 0 };
   rows.forEach(r => {
     const s = r.status ?? 'none';
@@ -145,13 +112,13 @@ function addCoverSheet(workbook, meta, rows, sheetCols) {
   });
 
   const SUMMARY_ITEMS = [
-    { label: 'Total rules',          value: countVal(`=COUNTA(${dataRef(firstLetter)})`,                                rows.length),    bg: NAV,        fg: WHITE,       bold: true  },
-    { label: 'Compliant',            value: countVal(`=COUNTIF(${dataRef(sLetter)},"Compliant")`,                       counts.comply),  bg: 'FF375623', fg: WHITE,       bold: false },
-    { label: 'Explanation required', value: countVal(`=COUNTIF(${dataRef(sLetter)},"Explanation Required")`,            counts.explain), bg: 'FF1F4E79', fg: WHITE,       bold: false },
-    { label: '⚑ Flagged',           value: countVal(`=COUNTIF(${dataRef(sLetter)},"⚑ Flagged")`,                      counts.flagged), bg: 'FF9C0006', fg: WHITE,       bold: false },
-    { label: 'Open',                 value: countVal(`=COUNTIF(${dataRef(sLetter)},"Open")`,                            counts.open),   bg: 'FF7F6000', fg: WHITE,       bold: false },
-    { label: 'N/A',                  value: countVal(`=COUNTIF(${dataRef(sLetter)},"N/A")`,                             counts.na),     bg: 'FF595959', fg: WHITE,       bold: false },
-    { label: 'No status',            value: countVal(`=COUNTBLANK(${dataRef(sLetter)})`,                                counts.none),   bg: 'FFD1D5DB', fg: 'FF111827',  bold: false },
+    { label: 'Total rules',          value: rows.length,    bg: NAV,        fg: WHITE,      bold: true  },
+    { label: 'Compliant',            value: counts.comply,  bg: 'FF375623', fg: WHITE,      bold: false },
+    { label: 'Explanation required', value: counts.explain, bg: 'FF1F4E79', fg: WHITE,      bold: false },
+    { label: '⚑ Flagged',           value: counts.flagged, bg: 'FF9C0006', fg: WHITE,      bold: false },
+    { label: 'Open',                 value: counts.open,    bg: 'FF7F6000', fg: WHITE,      bold: false },
+    { label: 'N/A',                  value: counts.na,      bg: 'FF595959', fg: WHITE,      bold: false },
+    { label: 'No status',            value: counts.none,    bg: 'FFD1D5DB', fg: 'FF111827', bold: false },
   ];
 
   const shdr = cover.addRow([]);
@@ -198,7 +165,7 @@ function buildXlsx(rows, selectedKeys, meta) {
   workbook.creator = 'STIG Manager';
 
   const cols = XLSX_COLUMNS.filter(c => selectedKeys.includes(c.key));
-  addCoverSheet(workbook, meta, rows, cols);
+  addCoverSheet(workbook, meta, rows);
 
   const sheet = workbook.addWorksheet('STIG Review', {
     views: [{ state: 'frozen', ySplit: 1 }],
@@ -224,8 +191,9 @@ function buildXlsx(rows, selectedKeys, meta) {
 
   // Data rows
   rows.forEach((r, i) => {
-    const isEven   = i % 2 === 0;
-    const rowBg = isEven ? 'FFFFFFFF' : 'FFF5F7FA';
+    const isEven    = i % 2 === 0;
+    const isFlagged = r.status === 'flagged';
+    const rowBg     = isFlagged ? 'FFFFF0F0' : (isEven ? 'FFFFFFFF' : 'FFF5F7FA');
     const values = cols.map(c => {
       if (c.key === 'expires_at') return r.expires_at ? r.expires_at.split('T')[0] : '';
       if (c.key === 'status')     return STATUS_STYLE[r.status]?.label ?? r.status ?? '';
@@ -239,17 +207,9 @@ function buildXlsx(rows, selectedKeys, meta) {
       let bg        = rowBg;
       let fontColor = 'FF000000';
 
-      if (colKey === 'status') {
-        if (r.status && STATUS_STYLE[r.status]) {
-          bg        = 'FF' + STATUS_STYLE[r.status].fill;
-          fontColor = 'FF' + STATUS_STYLE[r.status].font;
-        }
-        cell.dataValidation = {
-          type: 'list',
-          allowBlank: true,
-          showDropDown: false,
-          formulae: ['"Compliant,Explanation Required,⚑ Flagged,Open,N/A"'],
-        };
+      if (colKey === 'status' && r.status && STATUS_STYLE[r.status]) {
+        bg        = 'FF' + STATUS_STYLE[r.status].fill;
+        fontColor = 'FF' + STATUS_STYLE[r.status].font;
       } else if (colKey === 'severity' && r.severity && SEVERITY_STYLE[r.severity]) {
         bg        = 'FF' + SEVERITY_STYLE[r.severity].fill;
         fontColor = 'FF' + SEVERITY_STYLE[r.severity].font;
@@ -268,37 +228,6 @@ function buildXlsx(rows, selectedKeys, meta) {
   });
 
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
-
-  // Conditional formatting on status column so colours update when user
-  // edits the dropdown value in Excel.
-  const statusIdx = cols.findIndex(c => c.key === 'status');
-  if (statusIdx >= 0) {
-    const sLetter  = colLetter(statusIdx + 1);
-    const lastCol  = colLetter(cols.length);
-    const lastRow  = rows.length + 1;
-
-    // Row-level highlight for flagged (lower priority, overridden by status-cell rules)
-    sheet.addConditionalFormatting({
-      ref: `A2:${lastCol}${lastRow}`,
-      rules: [
-        { priority: 20, type: 'expression', formulae: [`$${sLetter}2="⚑ Flagged"`],
-          style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFF0F0' } } } },
-      ],
-    });
-
-    // Status cell colours (higher priority, override row highlight for status column)
-    sheet.addConditionalFormatting({
-      ref: `${sLetter}2:${sLetter}${lastRow}`,
-      rules: [
-        { priority: 1, type: 'cellIs', operator: 'equal', formulae: ['"Compliant"'],            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFC6EFCE' } }, font: { color: { argb: 'FF375623' } } } },
-        { priority: 2, type: 'cellIs', operator: 'equal', formulae: ['"Explanation Required"'],  style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFBDD7EE' } }, font: { color: { argb: 'FF1F4E79' } } } },
-        { priority: 3, type: 'cellIs', operator: 'equal', formulae: ['"⚑ Flagged"'],            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } }, font: { color: { argb: 'FF9C0006' } } } },
-        { priority: 4, type: 'cellIs', operator: 'equal', formulae: ['"Open"'],                  style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFEB9C' } }, font: { color: { argb: 'FF7F6000' } } } },
-        { priority: 5, type: 'cellIs', operator: 'equal', formulae: ['"N/A"'],                   style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFEDEDED' } }, font: { color: { argb: 'FF595959' } } } },
-      ],
-    });
-  }
-
   return workbook;
 }
 
