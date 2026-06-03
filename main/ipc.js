@@ -129,7 +129,8 @@ function addCoverSheet(workbook, meta, rows, sheetCols) {
   const hasStatusCol = statusIdx >= 0;
   const sLetter      = hasStatusCol ? colLetter(statusIdx + 1) : null;
   const firstLetter  = sheetCols.length > 0 ? colLetter(1) : 'A';
-  const dataRef      = (letter) => `'STIG Review'!${letter}2:${letter}1048576`;
+  const lastDataRow  = rows.length + 1;
+  const dataRef      = (letter) => `'STIG Review'!${letter}2:${letter}${lastDataRow}`;
 
   function countVal(formula, fallback) {
     // ExcelJS requires formula WITHOUT leading '='; result provides cached display value
