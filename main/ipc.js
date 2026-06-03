@@ -67,8 +67,9 @@ function buildXlsx(rows, selectedKeys) {
 
   // Data rows
   rows.forEach((r, i) => {
-    const isEven = i % 2 === 0;
-    const rowBg  = isEven ? 'FFFFFFFF' : 'FFF5F7FA';
+    const isEven   = i % 2 === 0;
+    const isFlagged = r.status === 'flagged';
+    const rowBg    = isFlagged ? 'FFFFF0F0' : (isEven ? 'FFFFFFFF' : 'FFF5F7FA');
     const values = cols.map(c => {
       if (c.key === 'expires_at') return r.expires_at ? r.expires_at.split('T')[0] : '';
       if (c.key === 'status')     return STATUS_STYLE[r.status]?.label ?? r.status ?? '';

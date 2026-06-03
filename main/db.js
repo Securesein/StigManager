@@ -261,7 +261,7 @@ function upsertAnnotation({ ruleId, status, notes, validYears = null, annotatedB
   const useExpiry = enforceExpiry && EXPIRY_STATUSES.has(status) && validYears;
   const expiresAt = useExpiry
     ? new Date(Date.now() + validYears * 365.25 * 24 * 60 * 60 * 1000).toISOString()
-    : null;
+    : '';  // empty string — expires_at column is NOT NULL in schema
 
   const existing = db.prepare('SELECT id FROM rule_annotations WHERE rule_id = ?').get(ruleId);
   if (existing) {

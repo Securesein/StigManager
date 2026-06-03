@@ -59,21 +59,24 @@ export default function RuleDetail({ rule, onBack, onSaved, enforceExpiry = true
 
   async function save() {
     setSaving(true);
-    const showExpiry = enforceExpiry && EXPIRY_STATUSES.includes(form.status) && !form.no_expiry;
-    await window.stig.saveAnnotation({
-      ruleId:        rule.id,
-      status:        form.status,
-      notes:         form.notes,
-      validYears:    showExpiry ? form.valid_years : null,
-      annotatedBy:   form.annotated_by || null,
-      enforceExpiry: showExpiry,
-    });
-    const ann = await window.stig.getAnnotation(rule.id);
-    setAnnotation(ann);
-    setSaving(false);
-    setSavedFlash(true);
-    onSaved?.();
-    setTimeout(() => setSavedFlash(false), 2000);
+    try {
+      const showExpiry = enforceExpiry && EXPIRY_STATUSES.includes(form.status) && !form.no_expiry;
+      await window.stig.saveAnnotation({
+        ruleId:        rule.id,
+        status:        form.status,
+        notes:         form.notes,
+        validYears:    showExpiry ? form.valid_years : null,
+        annotatedBy:   form.annotated_by || null,
+        enforceExpiry: showExpiry,
+      });
+      const ann = await window.stig.getAnnotation(rule.id);
+      setAnnotation(ann);
+      setSavedFlash(true);
+      onSaved?.();
+      setTimeout(() => setSavedFlash(false), 2000);
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!rule) return null;
