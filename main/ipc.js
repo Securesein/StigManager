@@ -1,10 +1,110 @@
 const { ipcMain, dialog, app } = require('electron');
-const fs   = require('fs');
-const path = require('path');
-const db   = require('./db');
+const fs      = require('fs');
+const path    = require('path');
+const ExcelJS = require('exceljs');
+const db      = require('./db');
 const { parseFile, peekMetadata } = require('./parser');
 const { matchRules }             = require('./matcher');
 const { EXPIRY_WARNING_DAYS }    = require('../shared/constants');
+
+// ── XLSX export helpers ───────────────────────────────────────────────────────
+
+const XLSX_COLUMNS = [
+  { key: 'vuln_id',       header: 'Vul ID',         width: 12 },
+  { key: 'stig_id',       header: 'Rule ID',         width: 28 },
+  { key: 'rule_title',    header: 'Rule Title',      width: 44 },
+  { key: 'severity',      header: 'Severity',        width: 12 },
+  { key: 'description',   header: 'Discussion',      width: 56 },
+  { key: 'check_content', header: 'Check Content',   width: 56 },
+  { key: 'fix_text',      header: 'Fix Text',        width: 56 },
+  { key: 'status',        header: 'Status',          width: 16 },
+  { key: 'notes',         header: 'Notes',           width: 56 },
+  { key: 'annotated_by',  header: 'Reviewer',        width: 18 },
+  { key: 'expires_at',    header: 'Expires At',      width: 14 },
+  { key: 'valid_years',   header: 'Valid (years)',   width: 12 },
+];
+
+const STATUS_STYLE = {
+  comply:  { fill: 'C6EFCE', font: '375623', label: 'Compliant' },
+  explain: { fill: 'BDD7EE', font: '1F4E79', label: 'Explanation Required' },
+  na:      { fill: 'EDEDED', font: '595959', label: 'N/A' },
+  open:    { fill: 'FFEB9C', font: '7F6000', label: 'Open' },
+  flagged: { fill: 'FFC7CE', font: '9C0006', label: '⚑ Flagged' },
+};
+
+const SEVERITY_STYLE = {
+  high:   { fill: 'FFC7CE', font: '9C0006' },
+  medium: { fill: 'FFEB9C', font: '7F6000' },
+  low:    { fill: 'DDEBF7', font: '1F4E79' },
+};
+
+function buildXlsx(rows, selectedKeys) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'STIG Manager';
+
+  const sheet = workbook.addWorksheet('STIG Review', {
+    views: [{ state: 'frozen', ySplit: 1 }],
+    pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1 },
+  });
+
+  const cols = XLSX_COLUMNS.filter(c => selectedKeys.includes(c.key));
+  sheet.columns = cols.map(c => ({ key: c.key, width: c.width }));
+
+  // Header row
+  const headerRow = sheet.addRow(cols.map(c => c.header));
+  headerRow.height = 26;
+  headerRow.eachCell(cell => {
+    cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A5F' } };
+    cell.font   = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+    cell.border = {
+      top:    { style: 'thin', color: { argb: 'FF1E3A5F' } },
+      left:   { style: 'thin', color: { argb: 'FF1E3A5F' } },
+      bottom: { style: 'thin', color: { argb: 'FF1E3A5F' } },
+      right:  { style: 'thin', color: { argb: 'FF1E3A5F' } },
+    };
+  });
+
+  // Data rows
+  rows.forEach((r, i) => {
+    const isEven = i % 2 === 0;
+    const rowBg  = isEven ? 'FFFFFFFF' : 'FFF5F7FA';
+    const values = cols.map(c => {
+      if (c.key === 'expires_at') return r.expires_at ? r.expires_at.split('T')[0] : '';
+      if (c.key === 'status')     return STATUS_STYLE[r.status]?.label ?? r.status ?? '';
+      return r[c.key] ?? '';
+    });
+
+    const dataRow = sheet.addRow(values);
+
+    dataRow.eachCell({ includeEmpty: true }, (cell, colIdx) => {
+      const colKey = cols[colIdx - 1]?.key;
+      let bg        = rowBg;
+      let fontColor = 'FF000000';
+
+      if (colKey === 'status' && r.status && STATUS_STYLE[r.status]) {
+        bg        = 'FF' + STATUS_STYLE[r.status].fill;
+        fontColor = 'FF' + STATUS_STYLE[r.status].font;
+      } else if (colKey === 'severity' && r.severity && SEVERITY_STYLE[r.severity]) {
+        bg        = 'FF' + SEVERITY_STYLE[r.severity].fill;
+        fontColor = 'FF' + SEVERITY_STYLE[r.severity].font;
+      }
+
+      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+      cell.font      = { size: 10, name: 'Calibri', color: { argb: fontColor } };
+      cell.alignment = { vertical: 'top', wrapText: true };
+      cell.border    = {
+        top:    { style: 'hair', color: { argb: 'FFD0D5DD' } },
+        left:   { style: 'hair', color: { argb: 'FFD0D5DD' } },
+        bottom: { style: 'hair', color: { argb: 'FFD0D5DD' } },
+        right:  { style: 'hair', color: { argb: 'FFD0D5DD' } },
+      };
+    });
+  });
+
+  sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+  return workbook;
+}
 
 // ── Gedeelde import logica ────────────────────────────────────────────────────
 
@@ -154,6 +254,23 @@ ipcMain.handle('stig:export-csv', (_, versionId) => {
     ].map(v => `"${(v ?? '').toString().replace(/"/g, '""')}"`).join(',');
   }).join('\n');
   return header + body;
+});
+
+ipcMain.handle('stig:export-xlsx', async (_, versionId, selectedColumnKeys) => {
+  const version = db.getAllVersions().find(v => v.id === versionId);
+  if (!version) return false;
+
+  const result = await dialog.showSaveDialog({
+    title:       'Export XLSX',
+    defaultPath: `STIG_${version.platform.replace(/[^a-z0-9]/gi, '_')}_${version.version}.xlsx`,
+    filters:     [{ name: 'Excel Workbook', extensions: ['xlsx'] }],
+  });
+  if (result.canceled) return false;
+
+  const rows     = db.getRulesWithAnnotationsByVersion(versionId);
+  const workbook = buildXlsx(rows, selectedColumnKeys);
+  await workbook.xlsx.writeFile(result.filePath);
+  return true;
 });
 
 // JSON export van één versie

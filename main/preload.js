@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('stig', {
   getExpiringItems: (days)                                      => ipcRenderer.invoke('stig:get-expiring', days),
   getMappings:      (versionId)                                 => ipcRenderer.invoke('stig:get-mappings', versionId),
   exportCsv:        (versionId)                                 => ipcRenderer.invoke('stig:export-csv', versionId),
+  exportXlsx:       (versionId, columns)                       => ipcRenderer.invoke('stig:export-xlsx', versionId, columns),
   exportJson:       ()                                          => ipcRenderer.invoke('stig:export-json'),
   saveFile:                  (defaultName, content) => ipcRenderer.invoke('stig:save-file', defaultName, content),
   getAnnotationsByVersion:   (versionId)                                => ipcRenderer.invoke('stig:get-annotations-by-version', versionId),
