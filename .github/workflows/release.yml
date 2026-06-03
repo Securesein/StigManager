@@ -25,7 +25,7 @@ jobs:
         run: npx @electron/rebuild -f -w better-sqlite3
 
       - name: Build DMGs
-        run: npm run build
+        run: npx vite build && npx electron-builder --publish=never
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
@@ -48,7 +48,7 @@ jobs:
         run: npx @electron/rebuild -f -w better-sqlite3
 
       - name: Build Windows installers
-        run: npm run build
+        run: npx vite build && npx electron-builder --publish=never
 
       - name: Upload to release
         uses: softprops/action-gh-release@v2
