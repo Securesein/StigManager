@@ -82,13 +82,15 @@ function addCoverSheet(workbook, meta, rows, sheetCols) {
 
   const h2 = cover.addRow([]);
   h2.height = 44;
+  navCell(h2, 1, '');
   navCell(h2, 2, 'STIG Compliance Review', { bold: true, size: 22, align: 'left', indent: 1 });
-  navCell(h2, 1, ''); navCell(h2, 3, ''); navCell(h2, 4, '');
+  cover.mergeCells(h2.number, 2, h2.number, 4);
 
   const h3 = cover.addRow([]);
   h3.height = 26;
+  navCell(h3, 1, '');
   navCell(h3, 2, meta.useCaseName ?? '—', { size: 13, align: 'left', indent: 1 });
-  navCell(h3, 1, ''); navCell(h3, 3, ''); navCell(h3, 4, '');
+  cover.mergeCells(h3.number, 2, h3.number, 4);
 
   const h4 = cover.addRow([]);
   h4.height = 14;
@@ -264,6 +266,25 @@ function buildXlsx(rows, selectedKeys, meta) {
   });
 
   sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: cols.length } };
+
+  // Conditional formatting on status column so colours update when user
+  // edits the dropdown value in Excel.
+  const statusIdx = cols.findIndex(c => c.key === 'status');
+  if (statusIdx >= 0) {
+    const sLetter = colLetter(statusIdx + 1);
+    const ref = `${sLetter}2:${sLetter}${rows.length + 1}`;
+    sheet.addConditionalFormatting({
+      ref,
+      rules: [
+        { priority: 1, type: 'cellIs', operator: 'equal', formulae: ['"Compliant"'],            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFC6EFCE' } }, font: { color: { argb: 'FF375623' } } } },
+        { priority: 2, type: 'cellIs', operator: 'equal', formulae: ['"Explanation Required"'],  style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFBDD7EE' } }, font: { color: { argb: 'FF1F4E79' } } } },
+        { priority: 3, type: 'cellIs', operator: 'equal', formulae: ['"⚑ Flagged"'],            style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFC7CE' } }, font: { color: { argb: 'FF9C0006' } } } },
+        { priority: 4, type: 'cellIs', operator: 'equal', formulae: ['"Open"'],                  style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFFFEB9C' } }, font: { color: { argb: 'FF7F6000' } } } },
+        { priority: 5, type: 'cellIs', operator: 'equal', formulae: ['"N/A"'],                   style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFEDEDED' } }, font: { color: { argb: 'FF595959' } } } },
+      ],
+    });
+  }
+
   return workbook;
 }
 
