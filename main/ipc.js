@@ -38,9 +38,139 @@ const SEVERITY_STYLE = {
   low:    { fill: 'DDEBF7', font: '1F4E79' },
 };
 
-function buildXlsx(rows, selectedKeys) {
+function addCoverSheet(workbook, meta, rows) {
+  const cover = workbook.addWorksheet('Cover');
+  cover.showGridLines = false;
+  cover.views = [{ showGridLines: false }];
+  cover.columns = [
+    { width: 3 },
+    { width: 22 },
+    { width: 36 },
+    { width: 16 },
+  ];
+
+  const NAV   = 'FF1E3A5F';
+  const WHITE = 'FFFFFFFF';
+  const LIGHT = 'FFF0F4FA';
+  const GRAY  = 'FF6B7280';
+
+  function blank(n = 1) {
+    for (let i = 0; i < n; i++) cover.addRow([]);
+  }
+
+  function navCell(row, col, value, opts = {}) {
+    const cell = row.getCell(col);
+    cell.value = value;
+    cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAV } };
+    cell.font  = { name: 'Calibri', color: { argb: WHITE }, bold: opts.bold ?? false, size: opts.size ?? 11 };
+    cell.alignment = { vertical: 'middle', horizontal: opts.align ?? 'left', indent: opts.indent ?? 0 };
+  }
+
+  // ── Header block ──────────────────────────────────────────────────────────
+  const h1 = cover.addRow([]);
+  h1.height = 14;
+  [1, 2, 3, 4].forEach(c => navCell(h1, c, ''));
+
+  const h2 = cover.addRow([]);
+  h2.height = 44;
+  navCell(h2, 2, 'STIG Compliance Review', { bold: true, size: 22, align: 'left', indent: 1 });
+  navCell(h2, 1, ''); navCell(h2, 3, ''); navCell(h2, 4, '');
+
+  const h3 = cover.addRow([]);
+  h3.height = 26;
+  navCell(h3, 2, meta.useCaseName ?? '—', { size: 13, align: 'left', indent: 1 });
+  navCell(h3, 1, ''); navCell(h3, 3, ''); navCell(h3, 4, '');
+
+  const h4 = cover.addRow([]);
+  h4.height = 14;
+  [1, 2, 3, 4].forEach(c => navCell(h4, c, ''));
+
+  blank(2);
+
+  // ── Detail rows ───────────────────────────────────────────────────────────
+  function detailRow(label, value) {
+    const row = cover.addRow([]);
+    row.height = 22;
+    const lc = row.getCell(2);
+    lc.value = label;
+    lc.font  = { name: 'Calibri', color: { argb: GRAY }, size: 10, bold: true };
+    lc.alignment = { vertical: 'middle' };
+
+    const vc = row.getCell(3);
+    vc.value = value;
+    vc.font  = { name: 'Calibri', size: 11 };
+    vc.alignment = { vertical: 'middle' };
+    return row;
+  }
+
+  detailRow('Platform',      meta.platform ?? '—');
+  detailRow('Version',       meta.version  ?? '—');
+  detailRow('Release date',  meta.releaseDate ? meta.releaseDate.split('T')[0] : '—');
+  detailRow('Export date',   meta.exportDate);
+
+  blank(2);
+
+  // ── Summary table ─────────────────────────────────────────────────────────
+  const counts = { comply: 0, explain: 0, flagged: 0, open: 0, na: 0, none: 0 };
+  rows.forEach(r => {
+    const s = r.status ?? 'none';
+    if (s in counts) counts[s]++; else counts.none++;
+  });
+
+  const SUMMARY_ITEMS = [
+    { label: 'Total rules',          value: rows.length,        bg: NAV,      fg: WHITE,    bold: true },
+    { label: 'Compliant',            value: counts.comply,      bg: 'FF375623', fg: WHITE,  bold: false },
+    { label: 'Explanation required', value: counts.explain,     bg: 'FF1F4E79', fg: WHITE,  bold: false },
+    { label: '⚑ Flagged',           value: counts.flagged,     bg: 'FF9C0006', fg: WHITE,  bold: false },
+    { label: 'Open',                 value: counts.open,        bg: 'FF7F6000', fg: WHITE,  bold: false },
+    { label: 'N/A',                  value: counts.na,          bg: 'FF595959', fg: WHITE,  bold: false },
+    { label: 'No status',            value: counts.none,        bg: 'FFD1D5DB', fg: 'FF111827', bold: false },
+  ];
+
+  const shdr = cover.addRow([]);
+  shdr.height = 20;
+  const shdrLabel = shdr.getCell(2);
+  shdrLabel.value = 'Summary';
+  shdrLabel.font  = { name: 'Calibri', bold: true, size: 11, color: { argb: NAV } };
+  shdrLabel.alignment = { vertical: 'middle' };
+
+  blank(1);
+
+  SUMMARY_ITEMS.forEach(item => {
+    const row = cover.addRow([]);
+    row.height = 22;
+
+    const lc = row.getCell(2);
+    lc.value = item.label;
+    lc.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: item.bg } };
+    lc.font  = { name: 'Calibri', bold: item.bold, size: 10, color: { argb: item.fg } };
+    lc.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
+    lc.border = { bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } } };
+
+    const vc = row.getCell(3);
+    vc.value = item.value;
+    vc.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT } };
+    vc.font  = { name: 'Calibri', bold: item.bold, size: 10 };
+    vc.alignment = { vertical: 'middle', horizontal: 'center' };
+    vc.border = { bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } } };
+  });
+
+  // Fill all cells in the header columns with the nav colour so the sheet looks clean
+  cover.eachRow(row => {
+    [1, 4].forEach(c => {
+      const cell = row.getCell(c);
+      if (!cell.fill?.fgColor) {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+      }
+    });
+  });
+}
+
+function buildXlsx(rows, selectedKeys, meta) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'STIG Manager';
+
+  addCoverSheet(workbook, meta, rows);
 
   const sheet = workbook.addWorksheet('STIG Review', {
     views: [{ state: 'frozen', ySplit: 1 }],
@@ -268,8 +398,15 @@ ipcMain.handle('stig:export-xlsx', async (_, versionId, selectedColumnKeys) => {
   });
   if (result.canceled) return false;
 
-  const rows     = db.getRulesWithAnnotationsByVersion(versionId);
-  const workbook = buildXlsx(rows, selectedColumnKeys);
+  const rows = db.getRulesWithAnnotationsByVersion(versionId);
+  const meta = {
+    useCaseName: version.use_case_name ?? null,
+    platform:    version.platform,
+    version:     version.version,
+    releaseDate: version.release_date,
+    exportDate:  new Date().toISOString().split('T')[0],
+  };
+  const workbook = buildXlsx(rows, selectedColumnKeys, meta);
   await workbook.xlsx.writeFile(result.filePath);
   return true;
 });
