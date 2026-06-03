@@ -118,6 +118,7 @@ function addCoverSheet(workbook, meta, rows, sheetCols) {
   detailRow('Version',       meta.version  ?? '—');
   detailRow('Release date',  meta.releaseDate ? meta.releaseDate.split('T')[0] : '—');
   detailRow('Export date',   meta.exportDate);
+  if (meta.reviewer) detailRow('Reviewer', meta.reviewer);
 
   blank(2);
 
@@ -131,7 +132,8 @@ function addCoverSheet(workbook, meta, rows, sheetCols) {
   const dataRef      = (letter) => `'STIG Review'!${letter}2:${letter}1048576`;
 
   function countVal(formula, fallback) {
-    return hasStatusCol ? { formula } : fallback;
+    // ExcelJS requires formula WITHOUT leading '='; result provides cached display value
+    return hasStatusCol ? { formula: formula.replace(/^=/, ''), result: fallback } : fallback;
   }
 
   // Static fallback counts (used only when status column is not exported)
@@ -456,6 +458,7 @@ ipcMain.handle('stig:export-xlsx', async (_, versionId, selectedColumnKeys) => {
     version:     version.version,
     releaseDate: version.release_date,
     exportDate:  new Date().toISOString().split('T')[0],
+    reviewer:    version.use_case_reviewer ?? null,
   };
   const workbook = buildXlsx(rows, selectedColumnKeys, meta);
   await workbook.xlsx.writeFile(result.filePath);

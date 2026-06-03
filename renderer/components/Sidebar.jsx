@@ -77,11 +77,12 @@ function BackupMenu({ onClose }) {
 
 function UseCaseSettingsModal({ uc, onClose, onSaved }) {
   const [enforceExpiry, setEnforceExpiry] = useState(uc.enforce_expiry !== 0);
-  const [saving, setSaving] = useState(false);
+  const [reviewer, setReviewer]           = useState(uc.reviewer ?? '');
+  const [saving, setSaving]               = useState(false);
 
   async function save() {
     setSaving(true);
-    await window.stig.updateUseCaseSettings(uc.id, { enforceExpiry });
+    await window.stig.updateUseCaseSettings(uc.id, { enforceExpiry, reviewer });
     onSaved();
     onClose();
   }
@@ -93,6 +94,17 @@ function UseCaseSettingsModal({ uc, onClose, onSaved }) {
         <p className="text-xs text-gray-400 mb-5">Use case settings</p>
 
         <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Reviewer</label>
+            <input
+              value={reviewer}
+              onChange={e => setReviewer(e.target.value)}
+              placeholder="Name or team (optional)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+            <p className="text-xs text-gray-400 mt-1">Shown on the cover sheet of XLSX exports.</p>
+          </div>
+
           <label className="flex items-start gap-3 cursor-pointer">
             <input
               type="checkbox"

@@ -95,6 +95,9 @@ function initSchema(db) {
   if (!ucCols.some(c => c.name === 'enforce_expiry')) {
     db.exec('ALTER TABLE use_cases ADD COLUMN enforce_expiry INTEGER DEFAULT 1');
   }
+  if (!ucCols.some(c => c.name === 'reviewer')) {
+    db.exec('ALTER TABLE use_cases ADD COLUMN reviewer TEXT');
+  }
 
   // Migratie: expires_at nullable maken — annotaties van na/open krijgen geen timer meer
   // (bestaande data laten we staan, alleen nieuwe annotaties worden correct opgeslagen)
@@ -139,8 +142,9 @@ function renameUseCase(id, name) {
   getDb().prepare('UPDATE use_cases SET name = ? WHERE id = ?').run(name.trim(), id);
 }
 
-function updateUseCaseSettings(id, { enforceExpiry }) {
-  getDb().prepare('UPDATE use_cases SET enforce_expiry = ? WHERE id = ?').run(enforceExpiry ? 1 : 0, id);
+function updateUseCaseSettings(id, { enforceExpiry, reviewer }) {
+  getDb().prepare('UPDATE use_cases SET enforce_expiry = ?, reviewer = ? WHERE id = ?')
+    .run(enforceExpiry ? 1 : 0, reviewer?.trim() || null, id);
 }
 
 function deleteUseCase(id) {
@@ -186,7 +190,7 @@ function insertVersion(platform, version, releaseDate, sourceFormat, useCaseId =
 function getAllVersions() {
   try {
     return getDb().prepare(`
-      SELECT sv.*, uc.name AS use_case_name
+      SELECT sv.*, uc.name AS use_case_name, uc.reviewer AS use_case_reviewer
       FROM stig_versions sv
       LEFT JOIN use_cases uc ON sv.use_case_id = uc.id
       ORDER BY uc.name, sv.platform, sv.imported_at DESC
