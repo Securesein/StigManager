@@ -38,7 +38,16 @@ const SEVERITY_STYLE = {
   low:    { fill: 'DDEBF7', font: '1F4E79' },
 };
 
-function addCoverSheet(workbook, meta, rows) {
+function colLetter(n) {
+  let s = '';
+  while (n > 0) {
+    s = String.fromCharCode(65 + (n - 1) % 26) + s;
+    n = Math.floor((n - 1) / 26);
+  }
+  return s;
+}
+
+function addCoverSheet(workbook, meta, rows, sheetCols) {
   const cover = workbook.addWorksheet('Cover');
   cover.showGridLines = false;
   cover.views = [{ showGridLines: false }];
@@ -111,6 +120,19 @@ function addCoverSheet(workbook, meta, rows) {
   blank(2);
 
   // ── Summary table ─────────────────────────────────────────────────────────
+  // Use COUNTIF formulas referencing the data sheet so values update when
+  // the user edits the Excel file manually.
+  const statusIdx    = sheetCols.findIndex(c => c.key === 'status');
+  const hasStatusCol = statusIdx >= 0;
+  const sLetter      = hasStatusCol ? colLetter(statusIdx + 1) : null;
+  const firstLetter  = sheetCols.length > 0 ? colLetter(1) : 'A';
+  const dataRef      = (letter) => `'STIG Review'!${letter}2:${letter}1048576`;
+
+  function countVal(formula, fallback) {
+    return hasStatusCol ? { formula } : fallback;
+  }
+
+  // Static fallback counts (used only when status column is not exported)
   const counts = { comply: 0, explain: 0, flagged: 0, open: 0, na: 0, none: 0 };
   rows.forEach(r => {
     const s = r.status ?? 'none';
@@ -118,13 +140,13 @@ function addCoverSheet(workbook, meta, rows) {
   });
 
   const SUMMARY_ITEMS = [
-    { label: 'Total rules',          value: rows.length,        bg: NAV,      fg: WHITE,    bold: true },
-    { label: 'Compliant',            value: counts.comply,      bg: 'FF375623', fg: WHITE,  bold: false },
-    { label: 'Explanation required', value: counts.explain,     bg: 'FF1F4E79', fg: WHITE,  bold: false },
-    { label: '⚑ Flagged',           value: counts.flagged,     bg: 'FF9C0006', fg: WHITE,  bold: false },
-    { label: 'Open',                 value: counts.open,        bg: 'FF7F6000', fg: WHITE,  bold: false },
-    { label: 'N/A',                  value: counts.na,          bg: 'FF595959', fg: WHITE,  bold: false },
-    { label: 'No status',            value: counts.none,        bg: 'FFD1D5DB', fg: 'FF111827', bold: false },
+    { label: 'Total rules',          value: countVal(`=COUNTA(${dataRef(firstLetter)})`,                                rows.length),    bg: NAV,        fg: WHITE,       bold: true  },
+    { label: 'Compliant',            value: countVal(`=COUNTIF(${dataRef(sLetter)},"Compliant")`,                       counts.comply),  bg: 'FF375623', fg: WHITE,       bold: false },
+    { label: 'Explanation required', value: countVal(`=COUNTIF(${dataRef(sLetter)},"Explanation Required")`,            counts.explain), bg: 'FF1F4E79', fg: WHITE,       bold: false },
+    { label: '⚑ Flagged',           value: countVal(`=COUNTIF(${dataRef(sLetter)},"⚑ Flagged")`,                      counts.flagged), bg: 'FF9C0006', fg: WHITE,       bold: false },
+    { label: 'Open',                 value: countVal(`=COUNTIF(${dataRef(sLetter)},"Open")`,                            counts.open),   bg: 'FF7F6000', fg: WHITE,       bold: false },
+    { label: 'N/A',                  value: countVal(`=COUNTIF(${dataRef(sLetter)},"N/A")`,                             counts.na),     bg: 'FF595959', fg: WHITE,       bold: false },
+    { label: 'No status',            value: countVal(`=COUNTBLANK(${dataRef(sLetter)})`,                                counts.none),   bg: 'FFD1D5DB', fg: 'FF111827',  bold: false },
   ];
 
   const shdr = cover.addRow([]);
@@ -170,14 +192,14 @@ function buildXlsx(rows, selectedKeys, meta) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'STIG Manager';
 
-  addCoverSheet(workbook, meta, rows);
+  const cols = XLSX_COLUMNS.filter(c => selectedKeys.includes(c.key));
+  addCoverSheet(workbook, meta, rows, cols);
 
   const sheet = workbook.addWorksheet('STIG Review', {
     views: [{ state: 'frozen', ySplit: 1 }],
     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1 },
   });
 
-  const cols = XLSX_COLUMNS.filter(c => selectedKeys.includes(c.key));
   sheet.columns = cols.map(c => ({ key: c.key, width: c.width }));
 
   // Header row
