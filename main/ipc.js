@@ -102,24 +102,6 @@ function addCoverSheet(workbook, meta, rows) {
   detailRow('Export date',  meta.exportDate);
   if (meta.reviewer) detailRow('Reviewer', meta.reviewer);
 
-  blank(2);
-
-  // ── Summary table (static counts at export time) ──────────────────────────
-  const counts = { comply: 0, explain: 0, flagged: 0, open: 0, na: 0, none: 0 };
-  rows.forEach(r => {
-    const s = r.status ?? 'none';
-    if (s in counts) counts[s]++; else counts.none++;
-  });
-
-  const SUMMARY_ITEMS = [
-    { label: 'Total rules',          value: rows.length,    bg: NAV,        fg: WHITE,      bold: true  },
-    { label: 'Compliant',            value: counts.comply,  bg: 'FF375623', fg: WHITE,      bold: false },
-    { label: 'Explanation required', value: counts.explain, bg: 'FF1F4E79', fg: WHITE,      bold: false },
-    { label: '⚑ Flagged',           value: counts.flagged, bg: 'FF9C0006', fg: WHITE,      bold: false },
-    { label: 'Open',                 value: counts.open,    bg: 'FF7F6000', fg: WHITE,      bold: false },
-    { label: 'N/A',                  value: counts.na,      bg: 'FF595959', fg: WHITE,      bold: false },
-    { label: 'No status',            value: counts.none,    bg: 'FFD1D5DB', fg: 'FF111827', bold: false },
-  ];
 
   const shdr = cover.addRow([]);
   shdr.height = 20;
@@ -129,25 +111,6 @@ function addCoverSheet(workbook, meta, rows) {
   shdrLabel.alignment = { vertical: 'middle' };
 
   blank(1);
-
-  SUMMARY_ITEMS.forEach(item => {
-    const row = cover.addRow([]);
-    row.height = 22;
-
-    const lc = row.getCell(2);
-    lc.value = item.label;
-    lc.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: item.bg } };
-    lc.font  = { name: 'Calibri', bold: item.bold, size: 10, color: { argb: item.fg } };
-    lc.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 };
-    lc.border = { bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } } };
-
-    const vc = row.getCell(3);
-    vc.value = item.value;
-    vc.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT } };
-    vc.font  = { name: 'Calibri', bold: item.bold, size: 10 };
-    vc.alignment = { vertical: 'middle', horizontal: 'center' };
-    vc.border = { bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } } };
-  });
 
   // Fill all cells in the header columns with the nav colour so the sheet looks clean
   cover.eachRow(row => {
@@ -191,9 +154,8 @@ function buildXlsx(rows, selectedKeys, meta) {
 
   // Data rows
   rows.forEach((r, i) => {
-    const isEven    = i % 2 === 0;
-    const isFlagged = r.status === 'flagged';
-    const rowBg     = isFlagged ? 'FFFFF0F0' : (isEven ? 'FFFFFFFF' : 'FFF5F7FA');
+    const isEven = i % 2 === 0;
+    const rowBg  = isEven ? 'FFFFFFFF' : 'FFF5F7FA';
     const values = cols.map(c => {
       if (c.key === 'expires_at') return r.expires_at ? r.expires_at.split('T')[0] : '';
       if (c.key === 'status')     return STATUS_STYLE[r.status]?.label ?? r.status ?? '';
