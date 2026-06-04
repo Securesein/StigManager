@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import RuleRow from '../components/RuleRow';
+
+const savedScrollPos = {};
 
 const SEVERITY_OPTIONS = ['All', 'high', 'medium', 'low'];
 const STATUS_OPTIONS   = ['All', 'flagged', 'comply', 'explain', 'open', 'na', 'none'];
@@ -101,12 +103,21 @@ export default function RuleList({ version, onSelectRule, onBack }) {
   const [showColConfig, setColConfig]   = useState(false);
   const [reviewer, setReviewer]         = useState(version?.use_case_reviewer ?? '');
   const [editingReviewer, setEditing]   = useState(false);
+  const listRef                         = useRef(null);
 
   useEffect(() => {
     if (!version) return;
     load();
     setReviewer(version.use_case_reviewer ?? '');
   }, [version]);
+
+  // Restore scroll position after rules render
+  useEffect(() => {
+    if (rules.length > 0 && listRef.current && version?.id) {
+      const pos = savedScrollPos[version.id];
+      if (pos) listRef.current.scrollTop = pos;
+    }
+  }, [rules]);
 
   async function load() {
     const [rules, annotations] = await Promise.all([
@@ -271,7 +282,7 @@ export default function RuleList({ version, onSelectRule, onBack }) {
         </label>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-white">
+      <div ref={listRef} className="flex-1 overflow-y-auto bg-white">
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
             No rules found
@@ -282,7 +293,12 @@ export default function RuleList({ version, onSelectRule, onBack }) {
               key={rule.id}
               rule={rule}
               annotation={annotMap[rule.id]}
-              onClick={() => onSelectRule(rule)}
+              onClick={() => {
+                if (listRef.current && version?.id) {
+                  savedScrollPos[version.id] = listRef.current.scrollTop;
+                }
+                onSelectRule(rule);
+              }}
             />
           ))
         )}
