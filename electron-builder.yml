@@ -31,3 +31,5 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 asar: true
+asarUnpack:
+  - "node_modules/better-sqlite3/**/*"

@@ -22,32 +22,60 @@ const STATUS_LABELS = {
   flagged:  '⚑ Flagged',
 };
 
-export default function RuleRow({ rule, annotation, onClick }) {
+export default function RuleRow({ rule, annotation, onToggleApplicable, onClick }) {
+  const excluded = rule.applicable === 0;
+
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors flex items-start gap-3 group"
-    >
-      <span className={`shrink-0 mt-0.5 w-16 text-center py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${SEVERITY_STYLES[rule.severity] ?? 'bg-gray-100 text-gray-500'}`}>
-        {rule.severity ?? '?'}
-      </span>
+    <div className={`flex items-stretch border-b border-gray-100 ${excluded ? 'bg-gray-50' : ''}`}>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-          <span className="text-xs text-gray-400 font-mono shrink-0">
-            {rule.vuln_id ?? rule.stig_id ?? '—'}
-          </span>
-          {annotation && (
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[annotation.status] ?? ''}`}>
-              {STATUS_LABELS[annotation.status] ?? annotation.status}
+      {/* Scope toggle */}
+      {onToggleApplicable && (
+        <button
+          onClick={() => onToggleApplicable(rule.id, rule.applicable)}
+          className={`w-9 shrink-0 flex items-center justify-center text-sm transition-colors border-r ${
+            excluded
+              ? 'border-gray-200 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'
+              : 'border-transparent text-gray-200 hover:text-red-400 hover:bg-red-50 hover:border-red-100'
+          }`}
+          title={excluded ? 'Include in scope' : 'Exclude from scope'}
+        >
+          {excluded ? '↩' : '⊘'}
+        </button>
+      )}
+
+      {/* Main row — click to open */}
+      <button
+        onClick={onClick}
+        className={`flex-1 min-w-0 text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-start gap-3 group ${excluded ? 'opacity-50' : ''}`}
+      >
+        <span className={`shrink-0 mt-0.5 w-16 text-center py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${excluded ? 'bg-gray-100 text-gray-400' : (SEVERITY_STYLES[rule.severity] ?? 'bg-gray-100 text-gray-500')}`}>
+          {rule.severity ?? '?'}
+        </span>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <span className="text-xs text-gray-400 font-mono shrink-0">
+              {rule.vuln_id ?? rule.stig_id ?? '—'}
             </span>
-          )}
-          {annotation?.expires_at && <TimerBadge expiresAt={annotation.expires_at} />}
+            {!excluded && annotation && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[annotation.status] ?? ''}`}>
+                {STATUS_LABELS[annotation.status] ?? annotation.status}
+              </span>
+            )}
+            {!excluded && annotation?.expires_at && <TimerBadge expiresAt={annotation.expires_at} />}
+            {excluded && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                Out of scope
+              </span>
+            )}
+          </div>
+          <p className={`text-sm truncate ${excluded ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+            {rule.rule_title}
+          </p>
         </div>
-        <p className="text-sm text-gray-800 truncate">{rule.rule_title}</p>
-      </div>
 
-      <span className="shrink-0 text-gray-300 group-hover:text-gray-400 mt-0.5 transition-colors">›</span>
-    </button>
+        <span className="shrink-0 text-gray-300 group-hover:text-gray-400 mt-0.5 transition-colors">›</span>
+      </button>
+    </div>
   );
 }

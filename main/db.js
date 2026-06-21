@@ -99,6 +99,12 @@ function initSchema(db) {
     db.exec('ALTER TABLE use_cases ADD COLUMN reviewer TEXT');
   }
 
+  // Migratie: applicable kolom toevoegen aan stig_rules (1 = in scope, 0 = out of scope)
+  const ruleCols = db.prepare('PRAGMA table_info(stig_rules)').all();
+  if (!ruleCols.some(c => c.name === 'applicable')) {
+    db.exec('ALTER TABLE stig_rules ADD COLUMN applicable INTEGER NOT NULL DEFAULT 1');
+  }
+
   // Migratie: expires_at nullable maken — annotaties van na/open krijgen geen timer meer
   // (bestaande data laten we staan, alleen nieuwe annotaties worden correct opgeslagen)
 
@@ -258,6 +264,11 @@ function getRuleById(id) {
   return getDb().prepare('SELECT * FROM stig_rules WHERE id = ?').get(id);
 }
 
+function setRuleApplicability(ruleId, applicable) {
+  getDb().prepare('UPDATE stig_rules SET applicable = ? WHERE id = ?')
+    .run(applicable ? 1 : 0, ruleId);
+}
+
 // ── Annotations ───────────────────────────────────────────────────────────────
 
 const EXPIRY_STATUSES = new Set(['comply', 'explain']);
@@ -345,12 +356,13 @@ function getMappingsByNewVersion(newVersionId) {
 
 // ── Export helpers ────────────────────────────────────────────────────────────
 
-function getRulesWithAnnotationsByVersion(versionId) {
+function getRulesWithAnnotationsByVersion(versionId, onlyApplicable = true) {
+  const scopeFilter = onlyApplicable ? ' AND (sr.applicable IS NULL OR sr.applicable = 1)' : '';
   return getDb().prepare(`
     SELECT sr.*, ra.status, ra.notes, ra.valid_years, ra.annotated_at, ra.expires_at, ra.annotated_by
     FROM stig_rules sr
     LEFT JOIN rule_annotations ra ON ra.rule_id = sr.id
-    WHERE sr.version_id = ?
+    WHERE sr.version_id = ?${scopeFilter}
     ORDER BY sr.severity DESC, sr.vuln_id
   `).all(versionId);
 }
@@ -388,7 +400,7 @@ module.exports = {
   getDb,
   getUseCases, createUseCase, renameUseCase, deleteUseCase, updateUseCaseReviewer,
   insertVersion, getAllVersions, getVersionsByUseCase, getVersionsByPlatform, getLatestVersionForPlatform, deleteVersion,
-  insertRules, getRulesByVersion, getRuleById,
+  insertRules, getRulesByVersion, getRuleById, setRuleApplicability,
   upsertAnnotation, getAnnotationByRule, deleteAnnotation, getAnnotationsByVersion, getExpiringAnnotations,
   insertMappings, getMappingsByNewVersion,
   getRulesWithAnnotationsByVersion, getDistinctPlatforms, getVersionStats,

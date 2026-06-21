@@ -7,6 +7,11 @@ const SEVERITY_OPTIONS = ['All', 'high', 'medium', 'low'];
 const STATUS_OPTIONS   = ['All', 'flagged', 'comply', 'explain', 'open', 'na', 'none'];
 const STATUS_LABELS    = { comply: 'Compliant', explain: 'Explain', open: 'Open', na: 'N/A', none: 'No status', flagged: '⚑ Flagged' };
 const SEV_LABELS       = { high: 'High', medium: 'Medium', low: 'Low' };
+const SCOPE_OPTIONS    = [
+  { value: 'all',      label: 'All rules' },
+  { value: 'inscope',  label: 'In scope' },
+  { value: 'outscope', label: 'Out of scope' },
+];
 
 const ALL_XLSX_COLUMNS = [
   { key: 'vuln_id',       label: 'Vul ID' },
@@ -98,6 +103,7 @@ export default function RuleList({ version, onSelectRule, onBack }) {
   const [filterStatus, setStatus]     = useState('All');
   const [filterExpiring, setExpiring] = useState(false);
   const [search, setSearch]           = useState('');
+  const [filterScope, setScope]        = useState('all');
   const [exporting, setExporting]     = useState(false);
   const [xlsxColumns, setXlsxColumns]   = useState(loadXlsxColumns);
   const [showColConfig, setColConfig]   = useState(false);
@@ -152,8 +158,19 @@ export default function RuleList({ version, onSelectRule, onBack }) {
     setXlsxColumns(cols);
   }
 
+  async function handleToggleApplicable(ruleId, currentApplicable) {
+    const newVal = currentApplicable === 0 ? 1 : 0;
+    await window.stig.setRuleApplicable(ruleId, newVal);
+    setRules(prev => prev.map(r => r.id === ruleId ? { ...r, applicable: newVal } : r));
+  }
+
   const filtered = useMemo(() => {
     return rules.filter(r => {
+      const excluded = r.applicable === 0;
+
+      if (filterScope === 'inscope'  &&  excluded) return false;
+      if (filterScope === 'outscope' && !excluded) return false;
+
       if (filterSeverity !== 'All' && r.severity !== filterSeverity) return false;
 
       if (filterStatus !== 'All') {
@@ -176,7 +193,7 @@ export default function RuleList({ version, onSelectRule, onBack }) {
 
       return true;
     });
-  }, [rules, annotMap, filterSeverity, filterStatus, filterExpiring, search]);
+  }, [rules, annotMap, filterSeverity, filterStatus, filterExpiring, filterScope, search]);
 
   return (
     <div className="flex flex-col h-full">
@@ -271,6 +288,16 @@ export default function RuleList({ version, onSelectRule, onBack }) {
           ))}
         </select>
 
+        <select
+          value={filterScope}
+          onChange={e => setScope(e.target.value)}
+          className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+        >
+          {SCOPE_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+
         <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -293,6 +320,7 @@ export default function RuleList({ version, onSelectRule, onBack }) {
               key={rule.id}
               rule={rule}
               annotation={annotMap[rule.id]}
+              onToggleApplicable={handleToggleApplicable}
               onClick={() => {
                 if (listRef.current && version?.id) {
                   savedScrollPos[version.id] = listRef.current.scrollTop;

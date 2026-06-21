@@ -101,14 +101,7 @@ function addCoverSheet(workbook, meta, rows) {
   detailRow('Release date', meta.releaseDate ? meta.releaseDate.split('T')[0] : '—');
   detailRow('Export date',  meta.exportDate);
   if (meta.reviewer) detailRow('Reviewer', meta.reviewer);
-
-
-  const shdr = cover.addRow([]);
-  shdr.height = 20;
-  const shdrLabel = shdr.getCell(2);
-  shdrLabel.value = 'Summary';
-  shdrLabel.font  = { name: 'Calibri', bold: true, size: 11, color: { argb: NAV } };
-  shdrLabel.alignment = { vertical: 'middle' };
+  if (meta.scopedRuleCount != null) detailRow('Rules in scope', `${meta.scopedRuleCount} of ${meta.totalRuleCount}`);
 
   blank(1);
 
@@ -329,6 +322,11 @@ ipcMain.handle('stig:update-reviewer', (_, id, reviewer) => {
   return true;
 });
 
+ipcMain.handle('stig:set-rule-applicable', (_, ruleId, applicable) => {
+  db.setRuleApplicability(ruleId, applicable);
+  return true;
+});
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('stig:export-csv', (_, versionId) => {
@@ -359,14 +357,17 @@ ipcMain.handle('stig:export-xlsx', async (_, versionId, selectedColumnKeys) => {
   });
   if (result.canceled) return false;
 
-  const rows = db.getRulesWithAnnotationsByVersion(versionId);
+  const allRows   = db.getRulesWithAnnotationsByVersion(versionId, false);
+  const rows      = allRows.filter(r => r.applicable !== 0);
   const meta = {
-    useCaseName: version.use_case_name ?? null,
-    platform:    version.platform,
-    version:     version.version,
-    releaseDate: version.release_date,
-    exportDate:  new Date().toISOString().split('T')[0],
-    reviewer:    version.use_case_reviewer ?? null,
+    useCaseName:     version.use_case_name ?? null,
+    platform:        version.platform,
+    version:         version.version,
+    releaseDate:     version.release_date,
+    exportDate:      new Date().toISOString().split('T')[0],
+    reviewer:        version.use_case_reviewer ?? null,
+    scopedRuleCount: rows.length,
+    totalRuleCount:  allRows.length,
   };
   const workbook = buildXlsx(rows, selectedColumnKeys, meta);
   await workbook.xlsx.writeFile(result.filePath);
