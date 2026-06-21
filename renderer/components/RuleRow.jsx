@@ -22,31 +22,49 @@ const STATUS_LABELS = {
   flagged:  '⚑ Flagged',
 };
 
+function IconMinusCircle() {
+  return (
+    <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="8" cy="8" r="6.5"/>
+      <path d="M5 8h6"/>
+    </svg>
+  );
+}
+
+function IconPlusCircle() {
+  return (
+    <svg viewBox="0 0 16 16" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <circle cx="8" cy="8" r="6.5"/>
+      <path d="M8 5v6M5 8h6"/>
+    </svg>
+  );
+}
+
 export default function RuleRow({ rule, annotation, onToggleApplicable, onClick }) {
   const excluded = rule.applicable === 0;
 
   return (
-    <div className={`flex items-stretch border-b border-gray-100 ${excluded ? 'bg-gray-50' : ''}`}>
+    <div className={`group flex items-stretch border-b border-gray-100 ${excluded ? 'bg-gray-50' : ''}`}>
 
       {/* Scope toggle */}
       {onToggleApplicable && (
         <button
           onClick={() => onToggleApplicable(rule.id, rule.applicable)}
-          className={`w-9 shrink-0 flex items-center justify-center text-sm transition-colors border-r ${
+          className={`w-9 shrink-0 flex items-center justify-center transition-all duration-150 border-r ${
             excluded
-              ? 'border-gray-200 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50'
-              : 'border-transparent text-gray-200 hover:text-red-400 hover:bg-red-50 hover:border-red-100'
+              ? 'bg-rose-50 border-rose-100 text-rose-400 hover:bg-rose-100 hover:text-rose-600'
+              : 'border-transparent text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-gray-100 hover:text-gray-500'
           }`}
           title={excluded ? 'Include in scope' : 'Exclude from scope'}
         >
-          {excluded ? '↩' : '⊘'}
+          {excluded ? <IconPlusCircle /> : <IconMinusCircle />}
         </button>
       )}
 
-      {/* Main row — click to open */}
+      {/* Main row */}
       <button
         onClick={onClick}
-        className={`flex-1 min-w-0 text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-start gap-3 group ${excluded ? 'opacity-50' : ''}`}
+        className={`flex-1 min-w-0 text-left px-4 py-3 transition-colors flex items-start gap-3 hover:bg-gray-50 ${excluded ? 'opacity-50' : ''}`}
       >
         <span className={`shrink-0 mt-0.5 w-16 text-center py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${excluded ? 'bg-gray-100 text-gray-400' : (SEVERITY_STYLES[rule.severity] ?? 'bg-gray-100 text-gray-500')}`}>
           {rule.severity ?? '?'}
