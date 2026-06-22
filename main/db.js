@@ -180,6 +180,12 @@ function insertVersion(platform, version, releaseDate, sourceFormat, useCaseId =
   // Zorg dat de kolom bestaat voordat we erin schrijven
   ensureUseCaseColumn(db);
 
+  // Valideer useCaseId — kan verwijzen naar een inmiddels verwijderde use case
+  if (useCaseId) {
+    const exists = db.prepare('SELECT id FROM use_cases WHERE id = ?').get(useCaseId);
+    if (!exists) useCaseId = null;
+  }
+
   try {
     return db.prepare('INSERT INTO stig_versions (use_case_id, platform, version, release_date, imported_at, source_format) VALUES (?, ?, ?, ?, ?, ?)')
       .run(useCaseId, platform, version, releaseDate || null, now, sourceFormat)
